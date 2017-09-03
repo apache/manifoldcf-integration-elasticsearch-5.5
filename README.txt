@@ -17,16 +17,16 @@ Compatibility
 ------------
 
 This version of this component is fully functional with Apache ManifoldCF 1.6 and
-above and with Elasticsearch 2.x.
+above and with Elasticsearch 5.5.
 
 Instructions for Building Apache ManifoldCF Plugin for Elastic Search from Source
 -----------------------------------------------------------------------------
 
-1. Download the Java SE 7 JDK (Java Development Kit), or greater, from
+1. Download the Java SE 8 JDK (Java Development Kit), or greater, from
    http://www.oracle.com/technetwork/java/index.html.
    You will need the JDK installed, and the %JAVA_HOME%\bin directory included
    on your command path.  To test this, issue a "java -version" command from your
-   shell and verify that the Java version is 1.7 or greater.
+   shell and verify that the Java version is 1.8 or greater.
 
 2. Download and install Maven 2.2.1 or later.  Maven installation and configuration
    instructions can be found here:
@@ -42,7 +42,7 @@ mvn clean install
 
 The JAR packages can be found in the target folder:
 
-target/elasticsearch-2.0-plugin-mcf-<VERSION>-jar-with-dependencies.jar
+target/elasticsearch-5.5-plugin-mcf-<VERSION>-jar-with-dependencies.jar
 
 ... where <VERSION> is the release version
 
@@ -141,7 +141,7 @@ public class SearchService {
 Licensing
 ---------
 
-Apache ManifoldCF Plugin for Elastic Search 2.0 is licensed under the
+Apache ManifoldCF Plugin for Elastic Search 5.5 is licensed under the
 Apache License 2.0. See the files called LICENSE.txt and NOTICE.txt
 for more information.
 
