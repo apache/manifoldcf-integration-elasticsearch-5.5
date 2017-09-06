@@ -26,6 +26,9 @@ import org.elasticsearch.ElasticsearchException;
 */
 public class MCFAuthorizerException extends ElasticsearchException
 {
+  // default serialVersionID
+	private static final long serialVersionUID = 1L;
+
   /** Constructor */
   public MCFAuthorizerException(String message)
   {

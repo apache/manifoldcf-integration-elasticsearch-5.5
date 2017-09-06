@@ -26,8 +26,9 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
 
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.logging.ESLogger;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLoggerFactory;
+
 
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -51,7 +52,7 @@ public class MCFAuthorizer
   static final public String NOSECURITY_TOKEN = "__nosecurity__";
 
   /** A logger we can use */
-  private static final ESLogger LOG = Loggers.getLogger(MCFAuthorizer.class);
+  private static final Logger LOG = ESLoggerFactory.getLogger(MCFAuthorizer.class);
 
   // Member variables
 

@@ -24,25 +24,26 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.search.RestSearchAction;
-import org.elasticsearch.rest.action.support.RestStatusToXContentListener;
+import org.elasticsearch.rest.action.RestStatusToXContentListener;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.elasticsearch.action.support.IndicesOptions;
-import org.elasticsearch.common.ParseFieldMatcher;
+/**import org.elasticsearch.common.ParseFieldMatcher;*/
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.action.support.RestActions;
+import org.elasticsearch.rest.action.RestActions;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.fetch.source.FetchSourceContext;
+import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.term.TermSuggestionBuilder;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.XContentParser;
 
 import java.io.*;
 
@@ -51,22 +52,22 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
   protected final MCFAuthorizer authorizer;
   
   @Inject
-  public MCFAuthorizerRestSearchAction(Settings settings, final RestController restController, Client client) {
-    super(settings,restController,client);
+  public MCFAuthorizerRestSearchAction(Settings settings, final RestController restController) {
+    super(settings,restController);
     final MCFConfigurationParameters conf = new MCFConfigurationParameters(settings);
     authorizer = new MCFAuthorizer(conf);
   }
 
-  @Override
   public void handleRequest(RestRequest request, RestChannel channel, Client client) {
     SearchRequest searchRequest;
-    searchRequest = parseSearchRequestMCF(request, parseFieldMatcher);
+    searchRequest = parseSearchRequestMCF(request); //, parseFieldMatcher);
     client.search(searchRequest, new RestStatusToXContentListener(channel));
   }
   
   protected SearchRequest parseSearchRequestMCF(
-    final RestRequest request,
-    final ParseFieldMatcher parseFieldMatcher) throws MCFAuthorizerException {
+    final RestRequest request //,
+//    final ParseFieldMatcher parseFieldMatcher
+    ) throws MCFAuthorizerException {
     final SearchRequest searchRequest;
     if(request.param("u")!=null) {
       searchRequest = new SearchRequest();
@@ -77,24 +78,31 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
 
       if(request.hasContent() || request.hasParam("source")) {
         QueryBuilder authorizationFilter = authorizer.buildAuthorizationFilter(authenticatedUserNamesAndDomains);
-        FilteredQueryBuilder filteredQueryBuilder;
+        QueryBuilder filteredQueryBuilder;
 
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode modifiedJSON, innerJSON;
         JsonNode requestJSON;
 
         try {
-          requestJSON = objectMapper.readTree(RestActions.getRestContent(request).toBytes());
+          requestJSON = objectMapper.readTree(RestActions.getQueryContent((XContentParser) request).toString());
           if (isTemplateRequest) {
             modifiedJSON = (ObjectNode) requestJSON;
             innerJSON = (ObjectNode)requestJSON.findValue("template");
-            filteredQueryBuilder = QueryBuilders.filteredQuery(QueryBuilders.wrapperQuery(innerJSON.findValue("query").toString()), authorizationFilter);
-            modifiedJSON.replace("template",innerJSON.set("query", objectMapper.readTree(filteredQueryBuilder.buildAsBytes().toBytes())));
+            filteredQueryBuilder = QueryBuilders.boolQuery()
+            		.must (QueryBuilders.wrapperQuery(innerJSON.findValue("query").toString()))
+            		.must(authorizationFilter);      		
+            		
+            modifiedJSON.replace("template",innerJSON.set("query", objectMapper.readTree(filteredQueryBuilder.toString())));
             searchRequest.templateSource(modifiedJSON.toString());
+            searchRequest.set
           } else {
-            filteredQueryBuilder = QueryBuilders.filteredQuery(QueryBuilders.wrapperQuery(requestJSON.findValue("query").toString()), authorizationFilter);
+            filteredQueryBuilder = QueryBuilders.boolQuery()
+            		.must(QueryBuilders.wrapperQuery(requestJSON.findValue("query").toString()))
+            		.must(authorizationFilter);
+            				
             modifiedJSON = (ObjectNode) requestJSON;
-            modifiedJSON.set("query", objectMapper.readTree(filteredQueryBuilder.buildAsBytes().toBytes()));
+            modifiedJSON.set("query", objectMapper.readTree(filteredQueryBuilder.toString()));
             searchRequest.source(modifiedJSON.toString());
           }
         } catch (IOException e) {
@@ -103,7 +111,7 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
       }
 
       //parseSearchSource(searchRequest.source(), request);
-      searchRequest.extraSource(parseSearchSourceMCF(request));
+      searchRequest.source(parseSearchSourceMCF(request));
       searchRequest.searchType(request.param("search_type"));
       
       // Should this be done?
@@ -120,7 +128,7 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
       searchRequest.indicesOptions(IndicesOptions.fromRequest(request, searchRequest.indicesOptions()));
     }
     else {
-      searchRequest = parseSearchRequest(request, parseFieldMatcher);
+      searchRequest = parseSearchRequest(request);//, parseFieldMatcher);
     }
     return searchRequest;
   }
@@ -135,18 +143,18 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
       from.defaultField(request.param("df"));
       from.analyzer(request.param("analyzer"));
       from.analyzeWildcard(request.paramAsBoolean("analyze_wildcard", false));
-      from.lowercaseExpandedTerms(request.paramAsBoolean("lowercase_expanded_terms", true));
+//      from.lowercaseExpandedTerms(request.paramAsBoolean("lowercase_expanded_terms", true));
       from.lenient(request.paramAsBoolean("lenient", (Boolean)null));
       String size = request.param("default_operator");
       if(size != null) {
         if("OR".equals(size)) {
-          from.defaultOperator(QueryStringQueryBuilder.Operator.OR);
+          from.defaultOperator(Operator.OR);
         } else {
           if(!"AND".equals(size)) {
             throw new IllegalArgumentException("Unsupported defaultOperator [" + size + "], can either be [OR] or [AND]");
           }
 
-          from.defaultOperator(QueryStringQueryBuilder.Operator.AND);
+          from.defaultOperator(Operator.AND);
         }
       }
 
@@ -154,7 +162,9 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
         searchSourceBuilder = new SearchSourceBuilder();
       }
 
-      searchSourceBuilder.query(QueryBuilders.filteredQuery(from, authorizationFilter));
+      searchSourceBuilder.query(QueryBuilders.boolQuery()
+    		  .must(from)
+    		  .must(authorizationFilter));
     }
     else {
         if(!(request.hasContent() || request.hasParam("source"))){
@@ -162,7 +172,8 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
             searchSourceBuilder = new SearchSourceBuilder();
           }
           QueryBuilder authorizationFilter = authorizer.buildAuthorizationFilter(request.param("u"));
-          searchSourceBuilder.query(QueryBuilders.filteredQuery(QueryBuilders.matchAllQuery(),authorizationFilter));
+          searchSourceBuilder.query(QueryBuilders.boolQuery()
+        		  .must(authorizationFilter));
         }
     }
 

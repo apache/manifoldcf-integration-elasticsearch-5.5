@@ -18,27 +18,30 @@
 */
 package org.apache.manifoldcf.elasticsearch;
 
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLoggerFactory;
 
 import org.elasticsearch.plugins.Plugin;
-import org.elasticsearch.rest.RestModule;
+//import org.elasticsearch.rest.RestModule;
+import org.elasticsearch.rest.BytesRestResponse;
+import org.elasticsearch.rest.RestController;
+import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.rest.action.cat.AbstractCatAction;
+import org.elasticsearch.rest.action.cat.RestTable;
 
 public class MCFAuthorizerPlugin extends Plugin
 {
 
-  private final ESLogger log = Loggers.getLogger(this.getClass());
+  private final Logger log = ESLoggerFactory.getLogger(this.getClass());
 
   public MCFAuthorizerPlugin() {
     log.info("Starting ManifoldCF Authorizer Plugin");
   }
 
-  @Override
   public String name() {
     return "elasticsearch-plugin-mcf";
   }
 
-  @Override
   public String description() {
     return "Plugin to connect elasticsearch with ManifoldCF";
   }
