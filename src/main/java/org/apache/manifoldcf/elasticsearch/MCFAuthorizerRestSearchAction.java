@@ -95,7 +95,8 @@ public class MCFAuthorizerRestSearchAction extends RestSearchAction {
             		
             modifiedJSON.replace("template",innerJSON.set("query", objectMapper.readTree(filteredQueryBuilder.toString())));
             searchRequest.templateSource(modifiedJSON.toString());
-            searchRequest.set
+            searchRequest.set("query", objectMapper.readTree(filteredQueryBuilder.toString()));
+            searchRequest.source(modifiedJSON.toString());
           } else {
             filteredQueryBuilder = QueryBuilders.boolQuery()
             		.must(QueryBuilders.wrapperQuery(requestJSON.findValue("query").toString()))
